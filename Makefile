@@ -3,6 +3,15 @@ LISTING_AGG := https://www.bls.gov/cex/tables.htm
 
 scrape:
 	perl scrape.pl $(LISTING_IND) \\.zip\$
+	perl scrape.pl $(LISTING_IND) \\.xlsx\$
+
+install:
+	cpan App::cpanminus
+	cpanm URI::URL \
+              Number::Bytes::Human \
+              Term::ProgressBar \
+	      Data::Dumper \
+	      WWW::Mechanize
 
 download:
 	wget https://www.bls.gov/cex/2017/combined/age.xlsx

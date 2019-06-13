@@ -1,33 +1,18 @@
 use strict;
-#use LWP::UserAgent;
 use URI::URL;
 use Number::Bytes::Human qw(format_bytes);
 use Term::ProgressBar;
-# use HTTP::Tiny;
-
+use WWW::Mechanize;
 use Data::Dumper;
+
+# use LWP::UserAgent;
+# use HTTP::Tiny;
 
 my $url = new URI::URL(shift());
 my $pattern = shift();
-#my $scheme = $url->scheme();
-#my $ua = LWP::UserAgent->ProgressBar->new();
-#
-#if (! $http->is_protocol_supported($scheme)) {
-#    die("protocol $scheme not supported");
-#}
-#
-
-#my $res = $http->get($url);
-#
-#if ($res->is_error) {
-#    die("download failed: " . $res->message);
-#}
-
-use WWW::Mechanize;
 
 my $mech = WWW::Mechanize->new(autocheck=>1, show_progress=>1);
 
-print "downloading $url\n";
 $mech->get($url);
 
 my $links = $mech->find_all_links('tag'=>'a',
@@ -35,21 +20,29 @@ my $links = $mech->find_all_links('tag'=>'a',
 
 my $progress = 0;
 my $url = 0;
+my $last_status = 0;
 
 *{WWW::Mechanize::progress} = sub {
     my ($ignore, $status, $request_or_response) = @_;
     if ($status eq 'begin') {
     } elsif ($status eq 'end') {
-	$progress = 0;
+	if ($progress) {
+	    $progress->message("got $url");
+	    $progress = 0;
+	}
     } else {
 	my $res = $request_or_response;
 	my $len = $res->header('content_length');
 	my $bytes = format_bytes($len);
 	if (! $progress) {
 	    $progress = Term::ProgressBar->new({'count'=>1.0,
-						'name'=>"$url ($bytes)"});
+						'name'=>"$url ($bytes)",
+					        'ETA'=>'linear'});
 	}
-	$progress->update($status);
+	if ($status != $last_status) {
+	    $progress->update($status);
+	}
+	$last_status = $status;
     }
 };
 
@@ -63,5 +56,5 @@ for my $link (@$links) {
 
     my $res = $mech->head($link->url_abs());
 
-    $mech->mirror($link->url_abs(), $filename);
+    $mech->mirror($link->url_abs(), "./data/$filename");
 }
